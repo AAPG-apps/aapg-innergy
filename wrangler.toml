@@ -1,0 +1,24 @@
+name = "innergy-proxy"
+main = "worker/index.ts"
+compatibility_date = "2024-01-01"
+
+# ─── Environment variables ────────────────────────────────────────────────────
+# DO NOT put your actual API key here.
+# Set secrets via CLI:
+#   wrangler secret put INNERGY_API_KEY
+#   wrangler secret put INNERGY_BASE_URL
+#   wrangler secret put ALLOWED_ORIGIN
+#
+# INNERGY_BASE_URL example : https://app.innergy.com
+# ALLOWED_ORIGIN example   : https://innergy-dashboard.pages.dev
+#                            (use * during local dev only)
+
+[vars]
+# Non-secret placeholder — override via dashboard or secrets
+INNERGY_BASE_URL = "https://app.innergy.com"
+ALLOWED_ORIGIN = "*"
+
+# ─── Local dev ────────────────────────────────────────────────────────────────
+[dev]
+port = 8787
+local_protocol = "http"
