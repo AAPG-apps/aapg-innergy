@@ -116,7 +116,7 @@ export default {
       const innergyResponse = await fetch(targetUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${env.INNERGY_API_KEY}`,
+          'API-Key': env.INNERGY_API_KEY,
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },

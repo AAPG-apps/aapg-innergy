@@ -694,7 +694,7 @@ body {
 
 /* ─── Scrollbar ───────────────────────────────────────────────────────── */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
@@ -727,3 +727,445 @@ body {
 .text-slate-600     { color: #475569; }
 
 .font-semibold      { font-weight: 600; }
+
+/* ─── Two-section main layout ─────────────────────────────────────────── */
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.main-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* PROJECTS section — fixed height, scrollable list */
+.projects-section {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 320px;           /* fixed height: shows ~5-6 project rows */
+  border-bottom: 2px solid var(--accent);
+  overflow: hidden;
+}
+
+.projects-section-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* WORK ORDERS section — takes remaining height */
+.wo-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Shared section header style */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.section-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: var(--bg-raised);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.section-table-wrap {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Detail pane (right side, slides in on project click) */
+.detail-pane {
+  width: 680px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Project cell in WO table */
+.wo-project-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wo-proj-number {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.wo-proj-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* ─── Tab bar ─────────────────────────────────────────────────────────── */
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  padding: 0 16px;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: var(--text-mid);
+}
+
+.tab-btn--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+
+.tab-btn--active .tab-badge {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* ─── Tab content ─────────────────────────────────────────────────────── */
+
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-pane {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tab-pane--full {
+  flex-direction: column;
+}
+
+
+/* ─── Gantt chart ─────────────────────────────────────────────────────── */
+
+.gantt-outer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.gantt-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Main body ───────────────────────────────────────────────────────── */
+
+.gantt-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Left label panel ────────────────────────────────────────────────── */
+
+.gantt-label-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid var(--accent);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.gantt-label-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Scrollable label rows — no visible scrollbar, synced with chart */
+.gantt-label-body {
+  flex: 1;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.gantt-label-body::-webkit-scrollbar { display: none; }
+
+.gantt-label-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(45,55,72,0.5);
+}
+.gantt-label-row:hover { background: var(--bg-raised); }
+
+/* Columns */
+.gantt-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 8px;
+  overflow: hidden;
+}
+
+.gantt-col--wo    { width: 140px; flex-shrink: 0; }
+.gantt-col--proj  { width: 140px; flex-shrink: 0; }
+.gantt-col--dates { flex: 1; flex-direction: row; align-items: center; gap: 4px; }
+
+.gantt-label-header .gantt-col {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  flex-direction: row;
+  align-items: center;
+}
+
+.gantt-wo-number  { font-family: var(--font-mono); font-size: 10px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.gantt-wo-name    { font-size: 11px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gantt-proj-num   { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+.gantt-proj-name  { font-size: 11px; color: var(--text-mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gantt-date-start { font-size: 10px; color: var(--text-dim); white-space: nowrap; font-family: var(--font-mono); }
+.gantt-date-sep   { font-size: 10px; color: var(--text-dim); }
+.gantt-date-ship  { font-size: 10px; white-space: nowrap; font-family: var(--font-mono); font-weight: 600; }
+
+/* ── Right chart: ONE scrollable container, both axes ────────────────── */
+/*
+ * Key design decision:
+ * The week header lives INSIDE .gantt-chart-wrap.
+ * It uses position:sticky + top:0 so it sticks vertically as rows scroll.
+ * Because it is inside the same scroll container, it moves LEFT/RIGHT
+ * automatically when the user scrolls horizontally. No JS needed for H sync.
+ */
+
+.gantt-chart-wrap {
+  flex: 1;
+  overflow: scroll;   /* both axes */
+  min-width: 0;
+  /* standard scroll behavior for smooth trackpad/touch */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Week header row — sticky to top within .gantt-chart-wrap */
+.gantt-week-header {
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  /* sticky + top:0 is set inline in JSX */
+}
+
+.gantt-week-label {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-mid);
+  border-left: 1px solid var(--border);
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* Bar rows area */
+.gantt-rows-area { position: relative; }
+
+/* Vertical grid lines */
+.gantt-grid-line {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  background: rgba(45,55,72,0.6);
+}
+
+/* Today line */
+.gantt-today-line {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  background: #f59e0b;
+  opacity: 0.85;
+  z-index: 1;
+}
+.gantt-today-line::before {
+  content: 'TODAY';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #f59e0b;
+  white-space: nowrap;
+}
+
+/* Bar rows */
+.gantt-bar-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(45,55,72,0.5);
+}
+
+/* Bar */
+.gantt-bar {
+  position: absolute;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: default;
+  transition: filter 0.15s;
+  z-index: 1;
+}
+.gantt-bar:hover { filter: brightness(1.2); }
+
+.gantt-bar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.gantt-no-dates {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding-left: 12px;
+}
+
+/* ─── Scale toggle ────────────────────────────────────────────────────── */
+
+.scale-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.scale-btn {
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.scale-btn:hover { color: var(--text-mid); background: var(--bg-surface); }
+
+.scale-btn--active {
+  background: var(--accent);
+  color: #000;
+}
+
+.search-input--sm { max-width: 200px; }
