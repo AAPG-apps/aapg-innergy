@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-5B1zwx/checked-fetch.js
+// .wrangler/tmp/bundle-qKovB4/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-5B1zwx/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-qKovB4/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -47,7 +47,7 @@ var INNERGY_API_PATH = "/api";
 function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400"
   };
@@ -56,10 +56,7 @@ __name(corsHeaders, "corsHeaders");
 function jsonResponse(data, status, origin) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      "Content-Type": "application/json",
-      ...corsHeaders(origin)
-    }
+    headers: { "Content-Type": "application/json", ...corsHeaders(origin) }
   });
 }
 __name(jsonResponse, "jsonResponse");
@@ -69,13 +66,14 @@ function errorResponse(message, status, origin) {
 __name(errorResponse, "errorResponse");
 function parseRoute(pathname) {
   const stripped = pathname.replace(/^\/proxy/, "");
-  if (stripped === "/projects") {
+  if (stripped === "/projects")
     return { innergyPath: "/projects" };
-  }
   const woMatch = stripped.match(/^\/projects\/([^/]+)\/workOrders$/);
-  if (woMatch) {
+  if (woMatch)
     return { innergyPath: `/projects/${woMatch[1]}/workOrders` };
-  }
+  const editMatch = stripped.match(/^\/workorders\/([^/]+)\/edit$/);
+  if (editMatch)
+    return { innergyPath: `/projects/workOrders/${editMatch[1]}/edit` };
   return { innergyPath: null };
 }
 __name(parseRoute, "parseRoute");
@@ -86,11 +84,11 @@ var worker_default = {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
-    if (request.method !== "GET") {
+    if (request.method !== "GET" && request.method !== "POST") {
       return errorResponse("Method not allowed", 405, origin);
     }
     if (!env.INNERGY_API_KEY || !env.INNERGY_BASE_URL) {
-      console.error("Missing INNERGY_API_KEY or INNERGY_BASE_URL environment variables");
+      console.error("Missing INNERGY_API_KEY or INNERGY_BASE_URL");
       return errorResponse("Proxy misconfigured", 500, origin);
     }
     const { innergyPath } = parseRoute(url.pathname);
@@ -99,25 +97,41 @@ var worker_default = {
     }
     const targetUrl = `${env.INNERGY_BASE_URL}${INNERGY_API_PATH}${innergyPath}${url.search}`;
     try {
+      let bodyText;
+      if (request.method === "POST") {
+        bodyText = await request.text();
+        console.log(`\u2192 POST ${innergyPath}`);
+        console.log(`\u2192 Body: ${bodyText}`);
+      }
       const innergyResponse = await fetch(targetUrl, {
-        method: "GET",
+        method: request.method,
         headers: {
-          "API-Key": env.INNERGY_API_KEY,
+          "Api-Key": env.INNERGY_API_KEY,
           "Content-Type": "application/json",
           "Accept": "application/json"
-        }
+        },
+        body: bodyText
       });
+      const responseText = await innergyResponse.text();
       if (!innergyResponse.ok) {
-        const text = await innergyResponse.text();
-        console.error(`Innergy API error ${innergyResponse.status}: ${text}`);
-        return errorResponse(
-          `Innergy API returned ${innergyResponse.status}`,
+        console.error(`\u2190 ${innergyResponse.status} ${request.method} ${innergyPath}`);
+        console.error(`\u2190 Response: ${responseText}`);
+        return jsonResponse(
+          { error: `Innergy API returned ${innergyResponse.status}`, detail: responseText },
           innergyResponse.status,
           origin
         );
       }
-      const data = await innergyResponse.json();
-      return jsonResponse(data, 200, origin);
+      console.log(`\u2190 ${innergyResponse.status} OK ${request.method} ${innergyPath}`);
+      try {
+        const data = JSON.parse(responseText);
+        return jsonResponse(data, 200, origin);
+      } catch {
+        return new Response(responseText, {
+          status: 200,
+          headers: { "Content-Type": "text/plain", ...corsHeaders(origin) }
+        });
+      }
     } catch (err) {
       console.error("Proxy fetch error:", err);
       return errorResponse("Failed to reach Innergy API", 502, origin);
@@ -166,7 +180,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-5B1zwx/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-qKovB4/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -198,7 +212,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-5B1zwx/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-qKovB4/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

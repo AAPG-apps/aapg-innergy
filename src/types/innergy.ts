@@ -65,6 +65,9 @@ export interface WorkOrder {
   WorkflowName: string | null;
   WorkflowStepEnteredDate: string | null;
   WorkflowStepEnteredDays: number;
+  MaterialOnHandDays: number;
+  ExternalIdentifier: string | null;
+  Tags: string[];
 }
 
 export interface WorkOrdersResponse {

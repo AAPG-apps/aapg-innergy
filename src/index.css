@@ -694,7 +694,7 @@ body {
 
 /* ─── Scrollbar ───────────────────────────────────────────────────────── */
 
-::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
@@ -1169,3 +1169,163 @@ body {
 }
 
 .search-input--sm { max-width: 200px; }
+
+/* ─── Drag cursor on bars ─────────────────────────────────────────────── */
+
+.gantt-bar { cursor: grab; }
+.gantt-bar--dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  z-index: 10 !important;
+}
+
+/* ─── Save status indicator ───────────────────────────────────────────── */
+
+.save-indicator {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.save-indicator--saving { color: #93c5fd; background: rgba(59,130,246,0.15); }
+.save-indicator--saved  { color: #6ee7b7; background: rgba(52,211,153,0.15); }
+.save-indicator--error  { color: #f87171; background: rgba(239,68,68,0.15);  }
+
+/* ─── Confirm dialog ──────────────────────────────────────────────────── */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+.dialog-title {
+  padding: 16px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.dialog-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialog-wo-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dialog-change {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dialog-change-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dialog-change-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.dialog-change-old {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-mid);
+  text-decoration: line-through;
+}
+
+.dialog-change-new {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+.dialog-arrow {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 16px;
+}
+
+.dialog-note {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.dialog-note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-mid);
+  background: var(--bg-surface);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  justify-content: flex-end;
+}
+
+.dialog-btn {
+  padding: 8px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+
+.dialog-btn--cancel {
+  background: transparent;
+  color: var(--text-mid);
+}
+.dialog-btn--cancel:hover { border-color: var(--text-mid); color: var(--text-primary); }
+
+.dialog-btn--confirm {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+.dialog-btn--confirm:hover { filter: brightness(1.1); }
