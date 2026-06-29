@@ -54,11 +54,10 @@ export type StatusCategory = 'active' | 'complete' | 'hold' | 'pending' | 'unkno
 export function categorizeStatus(status: string | null | undefined): StatusCategory {
   if (!status) return 'unknown';
   const s = status.toLowerCase();
-  if (s.includes('complet') || s.includes('close') || s.includes('done') || s.includes('finish')) return 'complete';
-  if (s.includes('hold') || s.includes('pause') || s.includes('block')) return 'hold';
-  if (s.includes('active') || s.includes('progress') || s.includes('open') || s.includes('production')) return 'active';
-  if (s.includes('pending') || s.includes('queue') || s.includes('new') || s.includes('draft')) return 'pending';
-  return 'unknown';
+  if (s === 'closed') return 'complete';
+  if (s === 'on hold') return 'hold';
+  if (s === 'open' || s === 'in progress') return 'active';
+  return 'pending';
 }
 
 export function statusColors(category: StatusCategory): {
