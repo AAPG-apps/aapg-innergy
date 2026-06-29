@@ -219,7 +219,7 @@ export function WorkOrderTable({ workOrders, loading }: Props) {
       const todayPx = diffDays(ganttStart, new Date()) * cfg.dayWidth;
       chartRef.current.scrollLeft = Math.max(0, todayPx - 200);
     }
-  }, [scale, filtered.length > 0]);
+  }, [scale, ganttStart, cfg.dayWidth]);
 
   const totalWidth  = totalDays * cfg.dayWidth;
   const todayOffset = diffDays(ganttStart, new Date());
