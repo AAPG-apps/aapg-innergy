@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useInnergy } from './hooks/useInnergy';
 import { ProjectList } from './components/ProjectList';
 import { WorkOrderPanel } from './components/WorkOrderPanel';
@@ -21,6 +21,7 @@ function App() {
   } = useInnergy();
 
   const [activeTab, setActiveTab] = useState<Tab>('projects');
+  const [filteredWoCount, setFilteredWoCount] = useState<number | null>(null);
   const [selectedProject, setSelectedProject] =
     useState<ProjectWithWorkOrders | null>(null);
 
@@ -61,7 +62,7 @@ function App() {
               <Stat label="Total Projects" value={projects.length} />
               <Stat label="Open" value={openCount} highlight />
               <Stat label="In Progress" value={inProgressCount} highlight />
-              <Stat label="Open Mfg WOs" value={allWorkOrders.length} />
+              <Stat label="Open Mfg WOs" value={filteredWoCount !== null ? filteredWoCount : allWorkOrders.length} />
             </>
           )}
         </div>
@@ -103,7 +104,11 @@ function App() {
         >
           WORK ORDERS
           {!workOrdersLoading && (
-            <span className="tab-badge">{allWorkOrders.length}</span>
+            <span className="tab-badge">
+              {filteredWoCount !== null && filteredWoCount !== allWorkOrders.length
+                ? `${filteredWoCount} / ${allWorkOrders.length}`
+                : allWorkOrders.length}
+            </span>
           )}
         </button>
       </div>
@@ -164,6 +169,7 @@ function App() {
             <WorkOrderTable
               workOrders={allWorkOrders}
               loading={workOrdersLoading && !projectsLoading}
+              onFilteredCountChange={setFilteredWoCount}
             />
           </div>
         )}

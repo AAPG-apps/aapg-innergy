@@ -5,6 +5,7 @@ import { formatDate, dueDateLabel, urgencyColors } from '../utils';
 interface Props {
   workOrders: FlatWorkOrder[];
   loading: boolean;
+  onFilteredCountChange?: (count: number) => void;
 }
 
 // ─── Date math ────────────────────────────────────────────────────────────────
@@ -97,6 +98,26 @@ const SCALES: Record<Scale, ScaleConfig> = {
   },
 };
 
+// ─── Production steps ─────────────────────────────────────────────────────────
+
+const PRODUCTION_STEPS: { code: string; label: string }[] = [
+  { code: '3000', label: '3000 - In Drafting Process' },
+  { code: '3100', label: '3100 - Ready for Engineering' },
+  { code: '3110', label: '3110 - Being Engineered' },
+  { code: '3130', label: '3130 - Ready for Purchasing' },
+  { code: '3140', label: '3140 - Awaiting Materials' },
+  { code: '3200', label: '3200 - Ready for Production' },
+  { code: '3210', label: '3210 - In Production CNC' },
+  { code: '3220', label: '3220 - In Production Assembly' },
+  { code: '3250', label: '3250 - Production Complete' },
+  { code: '3300', label: '3300 - Quality Control' },
+  { code: '3310', label: '3310 - Packaging' },
+  { code: '3400', label: '3400 - Staged/Ready' },
+  { code: '3500', label: '3500 - Delivered' },
+];
+
+const ALL_STEP_CODES = new Set(PRODUCTION_STEPS.map((s) => s.code));
+
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
 const ROW_HEIGHT    = 44;
@@ -123,9 +144,11 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function WorkOrderTable({ workOrders, loading }: Props) {
+export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: Props) {
   const [search, setSearch]       = useState('');
   const [scale, setScale]         = useState<Scale>('day');
+  const [selectedSteps, setSelectedSteps] = useState<Set<string>>(new Set(ALL_STEP_CODES));
+  const [stepDropdownOpen, setStepDropdownOpen] = useState(false);
   const [drag, setDrag]           = useState<DragState | null>(null);
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
   const [localDates, setLocalDates] = useState<Record<string, { start: string | null; end: string | null }>>({});
@@ -163,9 +186,10 @@ export function WorkOrderTable({ workOrders, loading }: Props) {
   // ── Filter ─────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
+    const allStepsSelected = selectedSteps.size === ALL_STEP_CODES.size;
     return workOrders.filter((wo) => {
-      if (!q) return true;
-      return (
+      // Text search
+      const matchesSearch = !q || (
         wo.Number?.toLowerCase().includes(q) ||
         wo.Name?.toLowerCase().includes(q) ||
         wo.projectNumber?.toLowerCase().includes(q) ||
@@ -173,8 +197,17 @@ export function WorkOrderTable({ workOrders, loading }: Props) {
         wo.customerName?.toLowerCase().includes(q) ||
         wo.Step?.toLowerCase().includes(q)
       );
+      // Step filter — match by step code prefix (first 4 chars of Step field)
+      const stepCode = wo.Step?.trim().substring(0, 4) ?? '';
+      const matchesStep = allStepsSelected || selectedSteps.has(stepCode);
+      return matchesSearch && matchesStep;
     });
-  }, [workOrders, search]);
+  }, [workOrders, search, selectedSteps]);
+
+  // Notify parent of filtered count whenever it changes
+  useEffect(() => {
+    onFilteredCountChange?.(filtered.length);
+  }, [filtered.length, onFilteredCountChange]);
 
   // ── Gantt time window ──────────────────────────────────────────────────────
   const { ganttStart, totalDays, columns } = useMemo(() => {
@@ -219,7 +252,7 @@ export function WorkOrderTable({ workOrders, loading }: Props) {
       const todayPx = diffDays(ganttStart, new Date()) * cfg.dayWidth;
       chartRef.current.scrollLeft = Math.max(0, todayPx - 200);
     }
-  }, [scale, ganttStart, cfg.dayWidth]);
+  }, [scale, filtered.length > 0]);
 
   const totalWidth  = totalDays * cfg.dayWidth;
   const todayOffset = diffDays(ganttStart, new Date());
@@ -306,7 +339,7 @@ export function WorkOrderTable({ workOrders, loading }: Props) {
 
   const handleConfirm = useCallback(async () => {
     if (!confirmDialog) return;
-    const { woId, newDate, newStartDate, deltaDays } = confirmDialog;
+    const { woId, newStartDate, deltaDays } = confirmDialog;
 
     setConfirmDialog(null);
 
@@ -432,6 +465,51 @@ export function WorkOrderTable({ workOrders, loading }: Props) {
             </button>
           ))}
         </div>
+        {/* Step filter dropdown */}
+        <div className="step-filter-wrap">
+          <button
+            className={`step-filter-btn ${selectedSteps.size < ALL_STEP_CODES.size ? 'step-filter-btn--active' : ''}`}
+            onClick={() => setStepDropdownOpen((o) => !o)}
+          >
+            Steps
+            {selectedSteps.size < ALL_STEP_CODES.size && (
+              <span className="step-filter-count">{selectedSteps.size}</span>
+            )}
+            <span className="step-filter-chevron">{stepDropdownOpen ? '▲' : '▼'}</span>
+          </button>
+          {stepDropdownOpen && (
+            <div className="step-filter-dropdown">
+              <div className="step-filter-actions">
+                <button
+                  className="step-action-btn"
+                  onClick={() => setSelectedSteps(new Set(ALL_STEP_CODES))}
+                >All</button>
+                <button
+                  className="step-action-btn"
+                  onClick={() => setSelectedSteps(new Set())}
+                >None</button>
+              </div>
+              {PRODUCTION_STEPS.map((s) => (
+                <label key={s.code} className="step-option">
+                  <input
+                    type="checkbox"
+                    checked={selectedSteps.has(s.code)}
+                    onChange={(e) => {
+                      setSelectedSteps((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(s.code);
+                        else next.delete(s.code);
+                        return next;
+                      });
+                    }}
+                  />
+                  <span>{s.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
         <input
           type="text"
           className="search-input search-input--sm"

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { ProjectWithWorkOrders } from '../types/innergy';
 import { formatDate, categorizeStatus, statusColors, dueDateLabel, urgencyColors } from '../utils';
 

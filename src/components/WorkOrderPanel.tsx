@@ -1,4 +1,3 @@
-import React from 'react';
 import type { ProjectWithWorkOrders } from '../types/innergy';
 import {
   formatDate,
