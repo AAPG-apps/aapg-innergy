@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { FlatWorkOrder } from '../hooks/useInnergy';
 import { formatDate, dueDateLabel, urgencyColors } from '../utils';
 
@@ -60,47 +60,44 @@ interface ScaleConfig {
 
 const SCALES: Record<Scale, ScaleConfig> = {
   day: {
-    label: 'Day',
-    dayWidth: 28,
-    columnDays: 7,
+    label: 'Day', dayWidth: 28, columnDays: 7,
     headerLabel: (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     unitStart: startOfWeek,
     nextUnit: (d) => addDays(d, 7),
   },
   week: {
-    label: 'Week',
-    dayWidth: 14,
-    columnDays: 7,
+    label: 'Week', dayWidth: 14, columnDays: 7,
     headerLabel: (d) => `Wk ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
     unitStart: startOfWeek,
     nextUnit: (d) => addDays(d, 7),
   },
   '4week': {
-    label: '4 Weeks',
-    dayWidth: 7,
-    columnDays: 28,
+    label: '4 Weeks', dayWidth: 7, columnDays: 28,
     headerLabel: (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     unitStart: (d) => {
       const jan1 = new Date(d.getFullYear(), 0, 1);
       const s = startOfWeek(d);
-      const weeks = Math.floor(diffDays(jan1, s) / 28);
-      return addDays(jan1, weeks * 28);
+      return addDays(jan1, Math.floor(diffDays(jan1, s) / 28) * 28);
     },
     nextUnit: (d) => addDays(d, 28),
   },
   month: {
-    label: 'Month',
-    dayWidth: 4,
-    columnDays: 30,
+    label: 'Month', dayWidth: 4, columnDays: 30,
     headerLabel: (d) => d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
     unitStart: startOfMonth,
     nextUnit: (d) => new Date(d.getFullYear(), d.getMonth() + 1, 1),
   },
 };
 
-// ─── Production steps ─────────────────────────────────────────────────────────
+// ─── WO type definitions ──────────────────────────────────────────────────────
 
-const PRODUCTION_STEPS: { code: string; label: string }[] = [
+type WOTypeFilter = 'All' | 'Production' | 'Drafting' | 'Installation';
+
+const WO_TYPE_OPTIONS: WOTypeFilter[] = ['All', 'Production', 'Drafting', 'Installation'];
+
+// ─── Step definitions per type ────────────────────────────────────────────────
+
+const PRODUCTION_STEPS = [
   { code: '3000', label: '3000 - In Drafting Process' },
   { code: '3100', label: '3100 - Ready for Engineering' },
   { code: '3110', label: '3110 - Being Engineered' },
@@ -116,7 +113,45 @@ const PRODUCTION_STEPS: { code: string; label: string }[] = [
   { code: '3500', label: '3500 - Delivered' },
 ];
 
-const ALL_STEP_CODES = new Set(PRODUCTION_STEPS.map((s) => s.code));
+const DRAFTING_STEPS = [
+  { code: '2000', label: '2000 - Awarded - Not Set Up' },
+  { code: '2005', label: '2005 - Project Set Up - Not Completed' },
+  { code: '2010', label: '2010 - Assigned - Not Started' },
+  { code: '2020', label: '2020 - Drafting Started - Not Complete' },
+  { code: '2030', label: '2030 - DM Internal Review - Not Complete' },
+  { code: '2100', label: '2100 - Revise 1st Draft - Not Complete' },
+  { code: '2110', label: '2110 - PM Review - Not Complete' },
+  { code: '2120', label: '2120 - Revise 2nd Draft - Not Complete' },
+  { code: '2130', label: '2130 - Submittal Que - Not Submitted' },
+  { code: '2200', label: '2200 - Submitted - Not Returned' },
+  { code: '2205', label: '2205 - Awaiting Change Orders - Not Complete' },
+  { code: '2210', label: '2210 - Revisions Needed - Not Complete' },
+  { code: '2220', label: '2220 - Resubmit Que - Revisions Completed' },
+  { code: '2230', label: '2230 - Resubmitted - Not Returned' },
+  { code: '2300', label: '2300 - Approved As Noted - Ready for Final Revisions' },
+  { code: '2310', label: '2310 - Final Revisions' },
+  { code: '2350', label: '2350 - Project BOM' },
+  { code: '2400', label: '2400 - Closed' },
+];
+
+const INSTALLATION_STEPS = [
+  { code: '4000', label: '4000 - In Production' },
+  { code: '4002', label: '4002 - First Available Delivery Date' },
+  { code: '4005', label: '4005 - Stored on Job Site' },
+  { code: '4010', label: '4010 - Installation Start' },
+  { code: '4100', label: '4100 - Being Installed' },
+  { code: '4130', label: '4130 - Punch' },
+  { code: '4200', label: '4200 - Install Completed' },
+];
+
+function getStepsForType(type: WOTypeFilter) {
+  switch (type) {
+    case 'Production':   return PRODUCTION_STEPS;
+    case 'Drafting':     return DRAFTING_STEPS;
+    case 'Installation': return INSTALLATION_STEPS;
+    default:             return [];
+  }
+}
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
@@ -131,34 +166,36 @@ const PROXY_BASE    = import.meta.env.VITE_PROXY_BASE_URL ?? '';
 interface DragState {
   woId: string;
   woIndex: number;
-  startDayOffset: number;    // gantt day where bar starts
-  endDayOffset: number;      // gantt day where bar ends
-  duration: number;          // days (end - start)
-  dragStartX: number;        // mouse X when drag began
-  currentDeltaDays: number;  // live delta while dragging
+  startDayOffset: number;
+  duration: number;
+  dragStartX: number;
+  currentDeltaDays: number;
 }
 
-// ─── Save status per WO ───────────────────────────────────────────────────────
-
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+// ─── Bar color by WO type ─────────────────────────────────────────────────────
+
+const TYPE_BASE_COLORS: Record<string, string> = {
+  Production:   '#3b82f6',   // blue
+  Drafting:     '#8b5cf6',   // purple
+  Installation: '#10b981',   // green
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: Props) {
-  const [search, setSearch]       = useState('');
-  const [scale, setScale]         = useState<Scale>('day');
-  const [selectedSteps, setSelectedSteps] = useState<Set<string>>(new Set(ALL_STEP_CODES));
+  const [search, setSearch]           = useState('');
+  const [scale, setScale]             = useState<Scale>('day');
+  const [typeFilter, setTypeFilter]   = useState<WOTypeFilter>('All');
+  const [selectedSteps, setSelectedSteps] = useState<Set<string>>(new Set());
   const [stepDropdownOpen, setStepDropdownOpen] = useState(false);
-  const [drag, setDrag]           = useState<DragState | null>(null);
-  const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
-  const [localDates, setLocalDates] = useState<Record<string, { start: string | null; end: string | null }>>({});
+  const [drag, setDrag]               = useState<DragState | null>(null);
+  const [saveStatus, setSaveStatus]   = useState<Record<string, SaveStatus>>({});
+  const [localDates, setLocalDates]   = useState<Record<string, { start: string | null; end: string | null }>>({});
   const [confirmDialog, setConfirmDialog] = useState<{
-    woId: string;
-    woName: string;
-    oldDate: string;
-    newDate: string;
-    newStartDate: string;
-    deltaDays: number;
+    woId: string; woName: string; oldDate: string;
+    newDate: string; newStartDate: string; deltaDays: number;
   } | null>(null);
 
   const labelBodyRef = useRef<HTMLDivElement>(null);
@@ -166,7 +203,17 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
   const syncing      = useRef(false);
   const cfg          = SCALES[scale];
 
-  // ── Scroll sync ────────────────────────────────────────────────────────────
+  // When type filter changes, reset step selection to all steps for that type
+  useEffect(() => {
+    const steps = getStepsForType(typeFilter);
+    setSelectedSteps(new Set(steps.map((s) => s.code)));
+  }, [typeFilter]);
+
+  const currentSteps = getStepsForType(typeFilter);
+  const allStepCodes = new Set(currentSteps.map((s) => s.code));
+  const showStepFilter = typeFilter !== 'All' && currentSteps.length > 0;
+
+  // ── Scroll sync ──────────────────────────────────────────────────────────────
   const onChartScroll = useCallback(() => {
     if (syncing.current) return;
     syncing.current = true;
@@ -183,11 +230,15 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
     syncing.current = false;
   }, []);
 
-  // ── Filter ─────────────────────────────────────────────────────────────────
+  // ── Filter ───────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    const allStepsSelected = selectedSteps.size === ALL_STEP_CODES.size;
+    const allStepsSelected = !showStepFilter || selectedSteps.size === allStepCodes.size;
+
     return workOrders.filter((wo) => {
+      // Type filter
+      if (typeFilter !== 'All' && wo.Type !== typeFilter) return false;
+
       // Text search
       const matchesSearch = !q || (
         wo.Number?.toLowerCase().includes(q) ||
@@ -197,19 +248,20 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
         wo.customerName?.toLowerCase().includes(q) ||
         wo.Step?.toLowerCase().includes(q)
       );
-      // Step filter — match by step code prefix (first 4 chars of Step field)
+
+      // Step filter (only when a single type with steps is selected)
       const stepCode = wo.Step?.trim().substring(0, 4) ?? '';
       const matchesStep = allStepsSelected || selectedSteps.has(stepCode);
+
       return matchesSearch && matchesStep;
     });
-  }, [workOrders, search, selectedSteps]);
+  }, [workOrders, search, typeFilter, selectedSteps, showStepFilter, allStepCodes.size]);
 
-  // Notify parent of filtered count whenever it changes
   useEffect(() => {
     onFilteredCountChange?.(filtered.length);
   }, [filtered.length, onFilteredCountChange]);
 
-  // ── Gantt time window ──────────────────────────────────────────────────────
+  // ── Gantt time window ────────────────────────────────────────────────────────
   const { ganttStart, totalDays, columns } = useMemo(() => {
     const dates: Date[] = [];
     for (const wo of filtered) {
@@ -219,16 +271,13 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
       if (e) dates.push(e);
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const padStart = scale === 'month' ? 31 : scale === '4week' ? 28 : 14;
     const padEnd   = scale === 'month' ? 62 : scale === '4week' ? 56 : 21;
     const minDays  = scale === 'month' ? 365 : scale === '4week' ? 180 : 90;
 
     if (dates.length === 0) {
-      const start = cfg.unitStart(addDays(today, -padStart));
-      return { ganttStart: start, totalDays: minDays, columns: [] as Date[] };
+      return { ganttStart: cfg.unitStart(addDays(today, -padStart)), totalDays: minDays, columns: [] as Date[] };
     }
 
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
@@ -239,209 +288,143 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
 
     const cols: Date[] = [];
     let cur = cfg.unitStart(new Date(start));
-    while (diffDays(start, cur) < total) {
-      cols.push(new Date(cur));
-      cur = cfg.nextUnit(cur);
-    }
+    while (diffDays(start, cur) < total) { cols.push(new Date(cur)); cur = cfg.nextUnit(cur); }
 
     return { ganttStart: start, totalDays: total, columns: cols };
-  }, [filtered, scale, localDates]);
+  }, [filtered, scale, localDates, cfg]);
 
   useEffect(() => {
     if (chartRef.current && filtered.length > 0) {
       const todayPx = diffDays(ganttStart, new Date()) * cfg.dayWidth;
       chartRef.current.scrollLeft = Math.max(0, todayPx - 200);
     }
-  }, [scale, filtered.length > 0]);
+  }, [scale, ganttStart, cfg.dayWidth]);
 
   const totalWidth  = totalDays * cfg.dayWidth;
   const todayOffset = diffDays(ganttStart, new Date());
 
-  // ── Drag handlers ──────────────────────────────────────────────────────────
+  // ── Bar color: urgency tints on top of type base color ───────────────────────
+  function barColor(wo: FlatWorkOrder): string {
+    const endDate = localDates[wo.Id]?.end ?? wo.PlannedShipmentDate;
+    const urgency = dueDateLabel(endDate).urgency;
+    if (urgency === 'overdue')  return '#ef4444';
+    if (urgency === 'critical') return '#f97316';
+    if (urgency === 'soon')     return '#f59e0b';
+    return TYPE_BASE_COLORS[wo.Type] ?? '#3b82f6';
+  }
 
+  function columnWidth(col: Date): number {
+    return scale === 'month' ? daysInMonth(col) * cfg.dayWidth : cfg.columnDays * cfg.dayWidth;
+  }
+
+  // ── Drag ─────────────────────────────────────────────────────────────────────
   const onBarMouseDown = useCallback((
-    e: React.MouseEvent,
-    wo: FlatWorkOrder,
-    woIndex: number,
-    startDayOffset: number,
-    endDayOffset: number,
-    duration: number
+    e: React.MouseEvent, wo: FlatWorkOrder, woIndex: number,
+    startDayOffset: number, duration: number
   ) => {
     e.preventDefault();
-    setDrag({
-      woId: wo.Id,
-      woIndex,
-      startDayOffset,
-      endDayOffset,
-      duration,
-      dragStartX: e.clientX,
-      currentDeltaDays: 0,
-    });
+    setDrag({ woId: wo.Id, woIndex, startDayOffset, duration, dragStartX: e.clientX, currentDeltaDays: 0 });
   }, []);
 
   useEffect(() => {
     if (!drag) return;
-
     const onMouseMove = (e: MouseEvent) => {
-      const deltaPx   = e.clientX - drag.dragStartX;
-      const deltaDays = Math.round(deltaPx / cfg.dayWidth);
+      const deltaDays = Math.round((e.clientX - drag.dragStartX) / cfg.dayWidth);
       setDrag((prev) => prev ? { ...prev, currentDeltaDays: deltaDays } : null);
     };
-
     const onMouseUp = (e: MouseEvent) => {
       if (!drag) return;
-
-      const deltaPx   = e.clientX - drag.dragStartX;
-      const deltaDays = Math.round(deltaPx / cfg.dayWidth);
-
-      if (deltaDays === 0) {
-        setDrag(null);
-        return;
-      }
-
-      // Find the WO
+      const deltaDays = Math.round((e.clientX - drag.dragStartX) / cfg.dayWidth);
+      if (deltaDays === 0) { setDrag(null); return; }
       const wo = filtered[drag.woIndex];
       if (!wo) { setDrag(null); return; }
-
       const currentStart = localDates[wo.Id]?.start ?? wo.PlannedStartDate;
       const currentEnd   = localDates[wo.Id]?.end   ?? wo.PlannedShipmentDate;
-
       const oldEndDate   = parseDate(currentEnd);
       const oldStartDate = parseDate(currentStart);
-
       if (!oldEndDate) { setDrag(null); return; }
-
-      const newEndDate   = addDays(oldEndDate,   deltaDays);
+      const newEndDate   = addDays(oldEndDate, deltaDays);
       const newStartDate = oldStartDate ? addDays(oldStartDate, deltaDays) : null;
-
-      // Show confirmation dialog before saving
       setConfirmDialog({
-        woId:         wo.Id,
-        woName:       `${wo.Number} — ${wo.Name}`,
-        oldDate:      formatDate(currentEnd),
-        newDate:      formatDate(toISODate(newEndDate)),
+        woId: wo.Id, woName: `${wo.Number} — ${wo.Name}`,
+        oldDate: formatDate(currentEnd),
+        newDate: formatDate(toISODate(newEndDate)),
         newStartDate: newStartDate ? toISODate(newStartDate) : (currentStart ?? ''),
         deltaDays,
       });
-
       setDrag(null);
     };
-
     window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup',   onMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup',   onMouseUp);
-    };
+    window.addEventListener('mouseup', onMouseUp);
+    return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
   }, [drag, cfg.dayWidth, filtered, localDates]);
 
-  // ── Confirm and save ───────────────────────────────────────────────────────
-
+  // ── Confirm save ─────────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
     if (!confirmDialog) return;
     const { woId, newStartDate, deltaDays } = confirmDialog;
-
     setConfirmDialog(null);
-
-    // Find WO to get current end date for new calculation
     const wo = filtered.find((w) => w.Id === woId);
     if (!wo) return;
-
-    const currentEnd = localDates[woId]?.end ?? wo.PlannedShipmentDate;
-    const oldEnd     = parseDate(currentEnd);
+    const oldEnd = parseDate(localDates[woId]?.end ?? wo.PlannedShipmentDate);
     if (!oldEnd) return;
-
     const newEndDate = addDays(oldEnd, deltaDays);
-
-    // Optimistic update — show new dates immediately
-    setLocalDates((prev) => ({
-      ...prev,
-      [woId]: { start: newStartDate, end: toISODate(newEndDate) },
-    }));
-
+    setLocalDates((prev) => ({ ...prev, [woId]: { start: newStartDate, end: toISODate(newEndDate) } }));
     setSaveStatus((prev) => ({ ...prev, [woId]: 'saving' }));
-
     try {
-      // Build body matching exact Innergy edit schema (no Id in body - URL only)
-      const editBody: Record<string, unknown> = {
-        Name:                   wo.Name,
-        TotalCost:              0,
-        Margin:                 0,
-        MarginPercentage:       0,
-        TargetCriticalMilestoneDate:  toISODate(newEndDate),
-        TargetCriticalStepDate:       toISODate(newEndDate),
-        ActualCriticalStepDate:       toISODate(newEndDate),
-        ActualCriticalMilestoneDate:  toISODate(newEndDate),
-        OwnerId:                wo.Owner?.Id ?? null,
-        AssigneesIds:           (wo.Assignees ?? []).map((a) => a.Id),
-        DraftersIds:            [],
-        EngineersIds:           [],
-        TeamLeadId:             wo.TeamLead?.Id ?? null,
-        Instructions:           '',
-        Facility:               wo.Facility ?? '',
-        Tags:                   wo.Tags ?? [],
-        MaterialOnHandDays:     wo.MaterialOnHandDays ?? 0,
-        ExternalIdentifier:     wo.ExternalIdentifier ?? '',
-        Outsourced:             wo.Outsourced ?? false,
-        IsBomRequired:          false,
+      const body = {
+        Name: wo.Name, TotalCost: 0, Margin: 0, MarginPercentage: 0,
+        TargetCriticalMilestoneDate: toISODate(newEndDate),
+        TargetCriticalStepDate:      toISODate(newEndDate),
+        ActualCriticalStepDate:      toISODate(newEndDate),
+        ActualCriticalMilestoneDate: toISODate(newEndDate),
+        OwnerId:      wo.Owner?.Id ?? null,
+        AssigneesIds: (wo.Assignees ?? []).map((a) => a.Id),
+        DraftersIds: [], EngineersIds: [],
+        TeamLeadId:          wo.TeamLead?.Id ?? null,
+        Instructions:        '',
+        Facility:            wo.Facility ?? '',
+        Tags:                wo.Tags ?? [],
+        MaterialOnHandDays:  wo.MaterialOnHandDays ?? 0,
+        ExternalIdentifier:  wo.ExternalIdentifier ?? '',
+        Outsourced:          wo.Outsourced ?? false,
+        IsBomRequired:       false,
       };
-
       const res = await fetch(`${PROXY_BASE}/proxy/workorders/${woId}/edit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editBody),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-
       if (!res.ok) throw new Error(`API returned ${res.status}`);
-
       setSaveStatus((prev) => ({ ...prev, [woId]: 'saved' }));
-      setTimeout(() => {
-        setSaveStatus((prev) => ({ ...prev, [woId]: 'idle' }));
-      }, 3000);
-
+      setTimeout(() => setSaveStatus((prev) => ({ ...prev, [woId]: 'idle' })), 3000);
     } catch (err) {
       console.error('Save failed:', err);
-      // Revert optimistic update on failure
-      setLocalDates((prev) => {
-        const updated = { ...prev };
-        delete updated[woId];
-        return updated;
-      });
+      setLocalDates((prev) => { const u = { ...prev }; delete u[woId]; return u; });
       setSaveStatus((prev) => ({ ...prev, [woId]: 'error' }));
-      setTimeout(() => {
-        setSaveStatus((prev) => ({ ...prev, [woId]: 'idle' }));
-      }, 5000);
+      setTimeout(() => setSaveStatus((prev) => ({ ...prev, [woId]: 'idle' })), 5000);
     }
   }, [confirmDialog, filtered, localDates]);
 
-  const handleCancel = useCallback(() => {
-    setConfirmDialog(null);
-  }, []);
+  const handleCancel = useCallback(() => setConfirmDialog(null), []);
 
-  // ── Bar rendering helpers ──────────────────────────────────────────────────
+  function saveIndicator(woId: string) {
+    const s = saveStatus[woId] ?? 'idle';
+    if (s === 'saving') return <span className="save-indicator save-indicator--saving">↑ Saving…</span>;
+    if (s === 'saved')  return <span className="save-indicator save-indicator--saved">✓ Saved</span>;
+    if (s === 'error')  return <span className="save-indicator save-indicator--error">✗ Failed</span>;
+    return null;
+  }
 
-  function barColor(wo: FlatWorkOrder): string {
-    const endDate = localDates[wo.Id]?.end ?? wo.PlannedShipmentDate;
-    switch (dueDateLabel(endDate).urgency) {
-      case 'overdue':  return '#ef4444';
-      case 'critical': return '#f97316';
-      case 'soon':     return '#f59e0b';
-      default:         return '#3b82f6';
+  // ── Type badge color ──────────────────────────────────────────────────────────
+  function typeBadgeStyle(type: string): { background: string; color: string } {
+    switch (type) {
+      case 'Production':   return { background: 'rgba(59,130,246,0.2)',  color: '#93c5fd' };
+      case 'Drafting':     return { background: 'rgba(139,92,246,0.2)',  color: '#c4b5fd' };
+      case 'Installation': return { background: 'rgba(16,185,129,0.2)', color: '#6ee7b7' };
+      default:             return { background: 'rgba(100,116,139,0.2)', color: '#94a3b8' };
     }
   }
 
-  function columnWidth(col: Date): number {
-    if (scale === 'month') return daysInMonth(col) * cfg.dayWidth;
-    return cfg.columnDays * cfg.dayWidth;
-  }
-
-  function saveIndicator(woId: string) {
-    const status = saveStatus[woId] ?? 'idle';
-    if (status === 'saving') return <span className="save-indicator save-indicator--saving">↑ Saving…</span>;
-    if (status === 'saved')  return <span className="save-indicator save-indicator--saved">✓ Saved</span>;
-    if (status === 'error')  return <span className="save-indicator save-indicator--error">✗ Failed</span>;
-    return null;
-  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="gantt-outer" style={{ userSelect: drag ? 'none' : 'auto' }}>
@@ -451,9 +434,24 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
         <div className="section-title-row">
           <h2 className="section-title">WORK ORDERS</h2>
           <span className="section-count">
-            {loading ? '…' : `${filtered.length} open manufacturing`}
+            {loading ? '…' : `${filtered.length} open`}
           </span>
         </div>
+
+        {/* WO Type filter */}
+        <div className="type-toggle">
+          {WO_TYPE_OPTIONS.map((t) => (
+            <button
+              key={t}
+              className={`type-btn type-btn--${t.toLowerCase()} ${typeFilter === t ? 'type-btn--active' : ''}`}
+              onClick={() => setTypeFilter(t)}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Scale toggle */}
         <div className="scale-toggle">
           {(Object.keys(SCALES) as Scale[]).map((s) => (
             <button
@@ -465,50 +463,46 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
             </button>
           ))}
         </div>
-        {/* Step filter dropdown */}
-        <div className="step-filter-wrap">
-          <button
-            className={`step-filter-btn ${selectedSteps.size < ALL_STEP_CODES.size ? 'step-filter-btn--active' : ''}`}
-            onClick={() => setStepDropdownOpen((o) => !o)}
-          >
-            Steps
-            {selectedSteps.size < ALL_STEP_CODES.size && (
-              <span className="step-filter-count">{selectedSteps.size}</span>
-            )}
-            <span className="step-filter-chevron">{stepDropdownOpen ? '▲' : '▼'}</span>
-          </button>
-          {stepDropdownOpen && (
-            <div className="step-filter-dropdown">
-              <div className="step-filter-actions">
-                <button
-                  className="step-action-btn"
-                  onClick={() => setSelectedSteps(new Set(ALL_STEP_CODES))}
-                >All</button>
-                <button
-                  className="step-action-btn"
-                  onClick={() => setSelectedSteps(new Set())}
-                >None</button>
+
+        {/* Step filter — only shown for Production and Drafting */}
+        {showStepFilter && (
+          <div className="step-filter-wrap">
+            <button
+              className={`step-filter-btn ${selectedSteps.size < allStepCodes.size ? 'step-filter-btn--active' : ''}`}
+              onClick={() => setStepDropdownOpen((o) => !o)}
+            >
+              Steps
+              {selectedSteps.size < allStepCodes.size && (
+                <span className="step-filter-count">{selectedSteps.size}</span>
+              )}
+              <span className="step-filter-chevron">{stepDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+            {stepDropdownOpen && (
+              <div className="step-filter-dropdown">
+                <div className="step-filter-actions">
+                  <button className="step-action-btn" onClick={() => setSelectedSteps(new Set(allStepCodes))}>All</button>
+                  <button className="step-action-btn" onClick={() => setSelectedSteps(new Set())}>None</button>
+                </div>
+                {currentSteps.map((s) => (
+                  <label key={s.code} className="step-option">
+                    <input
+                      type="checkbox"
+                      checked={selectedSteps.has(s.code)}
+                      onChange={(e) => {
+                        setSelectedSteps((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(s.code); else next.delete(s.code);
+                          return next;
+                        });
+                      }}
+                    />
+                    <span>{s.label}</span>
+                  </label>
+                ))}
               </div>
-              {PRODUCTION_STEPS.map((s) => (
-                <label key={s.code} className="step-option">
-                  <input
-                    type="checkbox"
-                    checked={selectedSteps.has(s.code)}
-                    onChange={(e) => {
-                      setSelectedSteps((prev) => {
-                        const next = new Set(prev);
-                        if (e.target.checked) next.add(s.code);
-                        else next.delete(s.code);
-                        return next;
-                      });
-                    }}
-                  />
-                  <span>{s.label}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         <input
           type="text"
@@ -517,19 +511,30 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
+        {/* Legend */}
         <div className="gantt-legend">
-          <span className="legend-item"><span className="legend-dot" style={{ background: '#3b82f6' }} />On track</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: '#f59e0b' }} />{'<21d'}</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: '#f97316' }} />{'<7d'}</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} />Overdue</span>
-          <span className="legend-item" style={{ color: 'var(--text-dim)', fontSize: 10 }}>← Drag bar to reschedule</span>
+          {typeFilter === 'All' ? (
+            <>
+              <span className="legend-item"><span className="legend-dot" style={{ background: TYPE_BASE_COLORS.Production }} />Production</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: TYPE_BASE_COLORS.Drafting }} />Drafting</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: TYPE_BASE_COLORS.Installation }} />Installation</span>
+            </>
+          ) : (
+            <>
+              <span className="legend-item"><span className="legend-dot" style={{ background: '#f59e0b' }} />{'<21d'}</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: '#f97316' }} />{'<7d'}</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} />Overdue</span>
+            </>
+          )}
+          <span className="legend-item" style={{ color: 'var(--text-dim)', fontSize: 10 }}>← Drag to reschedule</span>
         </div>
       </div>
 
       {loading ? (
         <div className="wo-state-msg"><span className="wo-spinner" />Loading work orders…</div>
       ) : filtered.length === 0 ? (
-        <div className="wo-state-msg wo-state-empty">No open manufacturing work orders found.</div>
+        <div className="wo-state-msg wo-state-empty">No open work orders match your filters.</div>
       ) : (
         <div className="gantt-body">
 
@@ -545,10 +550,16 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
                 const endDate   = localDates[wo.Id]?.end   ?? wo.PlannedShipmentDate;
                 const startDate = localDates[wo.Id]?.start ?? wo.PlannedStartDate;
                 const ship      = dueDateLabel(endDate);
+                const tbStyle   = typeBadgeStyle(wo.Type);
                 return (
                   <div key={wo.Id} className="gantt-label-row" style={{ height: ROW_HEIGHT }}>
                     <div className="gantt-col gantt-col--wo">
-                      <span className="gantt-wo-number">{wo.Number}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span className="gantt-wo-number">{wo.Number}</span>
+                        {typeFilter === 'All' && (
+                          <span className="wo-type-badge" style={tbStyle}>{wo.Type}</span>
+                        )}
+                      </div>
                       <span className="gantt-wo-name" title={wo.Name}>{wo.Name}</span>
                     </div>
                     <div className="gantt-col gantt-col--proj">
@@ -558,9 +569,7 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
                     <div className="gantt-col gantt-col--dates">
                       <span className="gantt-date-start">{formatDate(startDate)}</span>
                       <span className="gantt-date-sep">→</span>
-                      <span className={`gantt-date-ship ${urgencyColors(ship.urgency)}`}>
-                        {formatDate(endDate)}
-                      </span>
+                      <span className={`gantt-date-ship ${urgencyColors(ship.urgency)}`}>{formatDate(endDate)}</span>
                       {saveIndicator(wo.Id)}
                     </div>
                   </div>
@@ -569,26 +578,17 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
             </div>
           </div>
 
-          {/* ── RIGHT: scrollable chart ──────────────────────────────── */}
-          <div
-            className="gantt-chart-wrap"
-            ref={chartRef}
-            onScroll={onChartScroll}
-            style={{ cursor: drag ? 'grabbing' : 'default' }}
-          >
+          {/* ── RIGHT: chart ─────────────────────────────────────────── */}
+          <div className="gantt-chart-wrap" ref={chartRef} onScroll={onChartScroll}
+            style={{ cursor: drag ? 'grabbing' : 'default' }}>
             <div style={{ width: totalWidth, minWidth: totalWidth, position: 'relative' }}>
 
               {/* Sticky week header */}
-              <div
-                className="gantt-week-header"
-                style={{ height: HEADER_HEIGHT, width: totalWidth, position: 'sticky', top: 0, zIndex: 2 }}
-              >
+              <div className="gantt-week-header"
+                style={{ height: HEADER_HEIGHT, width: totalWidth, position: 'sticky', top: 0, zIndex: 2 }}>
                 {columns.map((col, i) => (
-                  <div
-                    key={i}
-                    className="gantt-week-label"
-                    style={{ left: diffDays(ganttStart, col) * cfg.dayWidth, width: columnWidth(col), height: HEADER_HEIGHT }}
-                  >
+                  <div key={i} className="gantt-week-label"
+                    style={{ left: diffDays(ganttStart, col) * cfg.dayWidth, width: columnWidth(col), height: HEADER_HEIGHT }}>
                     {cfg.headerLabel(col)}
                   </div>
                 ))}
@@ -596,29 +596,17 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
 
               {/* Bar rows */}
               <div className="gantt-rows-area" style={{ width: totalWidth, position: 'relative' }}>
-
-                {/* Grid lines */}
                 {columns.map((col, i) => (
-                  <div
-                    key={i}
-                    className="gantt-grid-line"
-                    style={{ left: diffDays(ganttStart, col) * cfg.dayWidth, height: filtered.length * ROW_HEIGHT }}
-                  />
+                  <div key={i} className="gantt-grid-line"
+                    style={{ left: diffDays(ganttStart, col) * cfg.dayWidth, height: filtered.length * ROW_HEIGHT }} />
                 ))}
-
-                {/* Today line */}
                 {todayOffset >= 0 && todayOffset <= totalDays && (
-                  <div
-                    className="gantt-today-line"
-                    style={{ left: todayOffset * cfg.dayWidth, height: filtered.length * ROW_HEIGHT }}
-                  />
+                  <div className="gantt-today-line"
+                    style={{ left: todayOffset * cfg.dayWidth, height: filtered.length * ROW_HEIGHT }} />
                 )}
-
-                {/* WO bars */}
                 {filtered.map((wo, woIndex) => {
-                  const rawStart = localDates[wo.Id]?.start ?? wo.PlannedStartDate;
-                  const rawEnd   = localDates[wo.Id]?.end   ?? wo.PlannedShipmentDate;
-
+                  const rawStart  = localDates[wo.Id]?.start ?? wo.PlannedStartDate;
+                  const rawEnd    = localDates[wo.Id]?.end   ?? wo.PlannedShipmentDate;
                   const startDate = parseDate(rawStart);
                   const endDate   = parseDate(rawEnd);
 
@@ -630,30 +618,26 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
                     );
                   }
 
-                  const s          = startDate ?? endDate!;
-                  const e          = endDate   ?? startDate!;
-                  const startOff   = diffDays(ganttStart, s);
-                  const endOff     = diffDays(ganttStart, e);
-                  const duration   = Math.max(diffDays(s, e), 1);
-
-                  // Apply live drag delta
+                  const s         = startDate ?? endDate!;
+                  const e         = endDate   ?? startDate!;
+                  const startOff  = diffDays(ganttStart, s);
+                  const duration  = Math.max(diffDays(s, e), 1);
                   const isDragging = drag?.woId === wo.Id;
-                  const delta      = isDragging ? drag!.currentDeltaDays : 0;
-                  const left       = (startOff + delta) * cfg.dayWidth;
-                  const width      = Math.max(duration * cfg.dayWidth, MIN_BAR_PX);
-                  const color      = barColor(wo);
-                  const durLabel   = `${duration}d`;
-                  const showLabel  = width >= 36;
+                  const delta     = isDragging ? drag!.currentDeltaDays : 0;
+                  const left      = (startOff + delta) * cfg.dayWidth;
+                  const width     = Math.max(duration * cfg.dayWidth, MIN_BAR_PX);
+                  const color     = barColor(wo);
+                  const showLabel = width >= 36;
 
                   return (
                     <div key={wo.Id} className="gantt-bar-row" style={{ height: ROW_HEIGHT }}>
                       <div
                         className={`gantt-bar ${isDragging ? 'gantt-bar--dragging' : ''}`}
                         style={{ left, width, background: color, transition: isDragging ? 'none' : 'left 0.15s ease' }}
-                        onMouseDown={(e) => onBarMouseDown(e, wo, woIndex, startOff, endOff, duration)}
-                        title={`${wo.Number} — ${wo.Name}\nProject: ${wo.projectName}\nStart: ${formatDate(rawStart)}\nShip: ${formatDate(rawEnd)}\nDuration: ${duration} days\n\nDrag to reschedule ship date`}
+                        onMouseDown={(ev) => onBarMouseDown(ev, wo, woIndex, startOff, duration)}
+                        title={`${wo.Number} — ${wo.Name}\nType: ${wo.Type}\nProject: ${wo.projectName}\nStart: ${formatDate(rawStart)}\nShip: ${formatDate(rawEnd)}\nDuration: ${duration} days`}
                       >
-                        {showLabel && <span className="gantt-bar-label">{durLabel}</span>}
+                        {showLabel && <span className="gantt-bar-label">{duration}d</span>}
                       </div>
                     </div>
                   );
@@ -661,7 +645,6 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
               </div>
             </div>
           </div>
-
         </div>
       )}
 
@@ -684,22 +667,17 @@ export function WorkOrderTable({ workOrders, loading, onFilteredCountChange }: P
                 </div>
               </div>
               <div className="dialog-note">
-                This will update <code>ActualCriticalStepDate</code> in Innergy.
                 The shift is <strong>{confirmDialog.deltaDays > 0 ? '+' : ''}{confirmDialog.deltaDays} days</strong>.
+                This will update <code>ActualCriticalStepDate</code> in Innergy.
               </div>
             </div>
             <div className="dialog-actions">
-              <button className="dialog-btn dialog-btn--cancel" onClick={handleCancel}>
-                Cancel
-              </button>
-              <button className="dialog-btn dialog-btn--confirm" onClick={handleConfirm}>
-                Confirm &amp; Save
-              </button>
+              <button className="dialog-btn dialog-btn--cancel" onClick={handleCancel}>Cancel</button>
+              <button className="dialog-btn dialog-btn--confirm" onClick={handleConfirm}>Confirm &amp; Save</button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
