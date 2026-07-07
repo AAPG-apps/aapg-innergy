@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useInnergy } from './hooks/useInnergy';
 import { ProjectList } from './components/ProjectList';
 import { WorkOrderPanel } from './components/WorkOrderPanel';
@@ -62,7 +62,7 @@ function App() {
               <Stat label="Total Projects" value={projects.length} />
               <Stat label="Open" value={openCount} highlight />
               <Stat label="In Progress" value={inProgressCount} highlight />
-              <Stat label="Open Mfg WOs" value={filteredWoCount !== null ? filteredWoCount : allWorkOrders.length} />
+              <Stat label="Open Work Orders" value={filteredWoCount !== null ? filteredWoCount : allWorkOrders.length} />
             </>
           )}
         </div>

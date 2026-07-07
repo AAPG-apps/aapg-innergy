@@ -18,13 +18,10 @@ export interface Project {
   Number: string;
   Name: string;
   Status: string;
-  Customer: {
-    Id: string;
-    Name: string;
-  };
+  Customer: { Id: string; Name: string };
   ProjectManager: NamedEntity | null;
-  FirstDelivery: string | null;           // date string YYYY-MM-DD
-  SubstantialCompletion: string | null;   // date string YYYY-MM-DD
+  FirstDelivery: string | null;
+  SubstantialCompletion: string | null;
   NextMilestone: string | null;
   WorkflowStepName: string | null;
   WorkflowStepIndex: number;
@@ -38,7 +35,7 @@ export interface ProjectsResponse {
 
 // ─── Work Orders ──────────────────────────────────────────────────────────────
 
-export type WorkOrderType = 'DRAFTING' | 'PRODUCTION' | 'INSTALLATION' | string;
+export type WorkOrderType = 'Production' | 'Drafting' | 'Installation' | string;
 
 export interface WorkOrder {
   Id: string;
@@ -51,9 +48,9 @@ export interface WorkOrder {
   StepType: string;
   Facility: string | null;
   Outsourced: boolean;
-  PlannedStartDate: string | null;        // YYYY-MM-DD
+  PlannedStartDate: string | null;
   ActualStartDate: string | null;
-  PlannedCriticalDate: string | null;     // ← Due Date / Milestone
+  PlannedCriticalDate: string | null;
   PlannedEndMonth: string | null;
   ActualEndDate: string | null;
   PlannedShipmentDate: string | null;
@@ -79,7 +76,7 @@ export interface WorkOrdersResponse {
 // ─── App-level derived types ───────────────────────────────────────────────────
 
 export interface ProjectWithWorkOrders extends Project {
-  workOrders: WorkOrder[];          // production WOs only
+  workOrders: WorkOrder[];
   workOrdersLoaded: boolean;
   workOrdersLoading: boolean;
   workOrdersError: string | null;

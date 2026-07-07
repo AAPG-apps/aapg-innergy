@@ -1436,3 +1436,49 @@ body {
   flex-shrink: 0;
   cursor: pointer;
 }
+
+/* ─── WO Type toggle ──────────────────────────────────────────────────────── */
+
+.type-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.type-btn {
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.type-btn:hover { color: var(--text-mid); background: var(--bg-surface); }
+
+.type-btn--active.type-btn--all          { background: var(--accent);  color: #000; }
+.type-btn--active.type-btn--production   { background: #3b82f6;        color: #fff; }
+.type-btn--active.type-btn--drafting     { background: #8b5cf6;        color: #fff; }
+.type-btn--active.type-btn--installation { background: #10b981;        color: #fff; }
+
+/* ─── WO type badge (shown in label panel when All selected) ─────────────── */
+
+.wo-type-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

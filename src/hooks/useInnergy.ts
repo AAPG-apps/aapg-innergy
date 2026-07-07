@@ -7,8 +7,11 @@ import type {
   ProjectWithWorkOrders,
 } from '../types/innergy';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
 const PROXY_BASE = import.meta.env.VITE_PROXY_BASE_URL ?? '';
+
+// ─── WO types to fetch ────────────────────────────────────────────────────────
+
+export type ActiveWOType = 'Production' | 'Drafting' | 'Installation';
 
 // ─── Raw fetch helpers ────────────────────────────────────────────────────────
 
@@ -25,12 +28,15 @@ async function fetchWorkOrders(projectId: string): Promise<WorkOrder[]> {
   const res = await fetch(`${PROXY_BASE}/proxy/projects/${projectId}/workOrders`);
   if (!res.ok) throw new Error(`Work orders fetch failed: ${res.status}`);
   const data: WorkOrdersResponse = await res.json();
+  // Return all open WOs across all three types
   return (data.Items ?? []).filter(
-    (wo) => wo.Type === 'Production' && wo.Status === 'Open'
+    (wo) =>
+      wo.Status === 'Open' &&
+      (wo.Type === 'Production' || wo.Type === 'Drafting' || wo.Type === 'Installation')
   );
 }
 
-// ─── Flat WO type (includes project info for the global WO table) ─────────────
+// ─── Flat WO type (includes project info) ────────────────────────────────────
 
 export interface FlatWorkOrder extends WorkOrder {
   projectId: string;
@@ -43,7 +49,7 @@ export interface FlatWorkOrder extends WorkOrder {
 
 export interface UseInnergyReturn {
   projects: ProjectWithWorkOrders[];
-  allWorkOrders: FlatWorkOrder[];       // all open manufacturing WOs, sorted by shipment date
+  allWorkOrders: FlatWorkOrder[];       // all open WOs (all types), sorted by ship date
   projectsLoading: boolean;
   workOrdersLoading: boolean;
   projectsError: string | null;
@@ -53,15 +59,14 @@ export interface UseInnergyReturn {
 }
 
 export function useInnergy(): UseInnergyReturn {
-  const [projects, setProjects] = useState<ProjectWithWorkOrders[]>([]);
-  const [allWorkOrders, setAllWorkOrders] = useState<FlatWorkOrder[]>([]);
+  const [projects, setProjects]               = useState<ProjectWithWorkOrders[]>([]);
+  const [allWorkOrders, setAllWorkOrders]     = useState<FlatWorkOrder[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [workOrdersLoading, setWorkOrdersLoading] = useState(false);
-  const [projectsError, setProjectsError] = useState<string | null>(null);
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [projectsError, setProjectsError]     = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed]     = useState<Date | null>(null);
+  const [refreshTick, setRefreshTick]         = useState(0);
 
-  // ── Load all projects, then auto-load all WOs ──────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
@@ -88,16 +93,12 @@ export function useInnergy(): UseInnergyReturn {
         // Auto-load WOs for all projects in parallel
         setWorkOrdersLoading(true);
         const woResults = await Promise.allSettled(
-          raw.map(async (p) => {
-            const wos = await fetchWorkOrders(p.Id);
-            return { project: p, wos };
-          })
+          raw.map(async (p) => ({ project: p, wos: await fetchWorkOrders(p.Id) }))
         );
         if (cancelled) return;
 
-        // Build flat WO list with project info attached
         const flat: FlatWorkOrder[] = [];
-        const updatedProjects: ProjectWithWorkOrders[] = withMeta.map((pm) => ({ ...pm }));
+        const updatedProjects = withMeta.map((pm) => ({ ...pm }));
 
         for (const result of woResults) {
           if (result.status === 'fulfilled') {
@@ -114,16 +115,16 @@ export function useInnergy(): UseInnergyReturn {
             for (const wo of wos) {
               flat.push({
                 ...wo,
-                projectId: project.Id,
+                projectId:    project.Id,
                 projectNumber: project.Number,
-                projectName: project.Name,
+                projectName:  project.Name,
                 customerName: project.Customer?.Name ?? '—',
               });
             }
           }
         }
 
-        // Sort all WOs by PlannedShipmentDate ascending (nulls last)
+        // Sort by PlannedShipmentDate ascending (nulls last)
         flat.sort((a, b) => {
           if (!a.PlannedShipmentDate && !b.PlannedShipmentDate) return 0;
           if (!a.PlannedShipmentDate) return 1;
@@ -148,13 +149,10 @@ export function useInnergy(): UseInnergyReturn {
     return () => { cancelled = true; };
   }, [refreshTick]);
 
-  // ── Load work orders for one project (on demand, for detail panel) ─────────
   const loadWorkOrders = useCallback(async (projectId: string) => {
     setProjects((prev) =>
       prev.map((p) =>
-        p.Id === projectId
-          ? { ...p, workOrdersLoading: true, workOrdersError: null }
-          : p
+        p.Id === projectId ? { ...p, workOrdersLoading: true, workOrdersError: null } : p
       )
     );
     try {
