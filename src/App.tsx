@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useInnergy } from './hooks/useInnergy';
 import { ProjectList } from './components/ProjectList';
 import { WorkOrderPanel } from './components/WorkOrderPanel';
