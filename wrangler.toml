@@ -16,7 +16,6 @@ compatibility_date = "2024-01-01"
 [vars]
 # Non-secret placeholder — override via dashboard or secrets
 INNERGY_BASE_URL = "https://app.innergy.com"
-ALLOWED_ORIGIN = "*"
 
 # ─── Local dev ────────────────────────────────────────────────────────────────
 [dev]
