@@ -3,4 +3,5 @@ dist/
 .env.production
 .dev.vars
 dev.vars
+secrets.json
 .wrangler/
