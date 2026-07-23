@@ -13,10 +13,6 @@ compatibility_date = "2024-01-01"
 # ALLOWED_ORIGIN example   : https://innergy-dashboard.pages.dev
 #                            (use * during local dev only)
 
-[vars]
-# Non-secret placeholder — override via dashboard or secrets
-INNERGY_BASE_URL = "https://app.innergy.com"
-
 # ─── Local dev ────────────────────────────────────────────────────────────────
 [dev]
 port = 8787
